@@ -7,24 +7,33 @@ use App\Models\User;
 
 trait Friendable
 {
-    public function friendShipIStarted()
+    public function friends()
     {
-        return $this->belongsToMany(User::class,'friendships','user_id','friend_id')->wherePivot('status','approved');
+        $friends = $this->friendShipIStarted()->get();
+        return $friends->merge($this->friendShipOtherStarted()->get());
     }
 
-    public function friendShipOtherStarted()
+    public function friendShipIStarted($status = 'accepted')
     {
-        return $this->belongsToMany(User::class,'friendships','user_id','friend_id')->wherePivot('status','approved');
+        return $this->belongsToMany(User::class,'friendships','user_id','friend_id')->wherePivot('status',$status);
     }
 
-    // access friends that a user was invited by
-    public function friendRequests()
+    public function friendShipOtherStarted($status = 'accepted')
     {
-        return $this->belongsToMany(User::class, 'friendships', 'friend_id', 'user_id')->withPivot('status','pending');
+        return $this->belongsToMany(User::class,'friendships','friend_id','user_id')->wherePivot('status',$status);
+    }
+
+    public function friendRequests($status = 'pending')
+    {
+        $frequest = $this->friendShipIStarted($status)->get();
+        return $frequest->merge($this->friendShipOtherStarted($status)->get());
     }
 
     public function inFriend($user)
     {
-        return $this->friends()->where('friend_id',$user)->where('status','approved')->exists();
+        $fi = $this->friendShipIStarted()->where('friend_id',$user)->count();
+        $oi = $this->friendShipOtherStarted()->where('user_id',$user)->count();
+        if($fi || $oi) { return true; }
+        return false;
     }
 }
